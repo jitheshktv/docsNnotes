@@ -1,0 +1,45 @@
+wget -qO- https://get.docker.com/ | sh
+wget -qO- https://experimental.docker.com/ | sh
+
+
+***Docker swarm***
+- docker swarm init --advertise-addr 172.165.23.25:2377 --listen-addr 172.165.23.25:2377 --> to initilize a docker swarm
+- docker swarm join-token manager --> to get the token for joining a manager to swarm. make sure to append the listen addr and the advertise address tags, and this time use the IP of the new node that you are adding to the swarm.
+- docker swarm join-token worker --> to get the token for joining a worker to the swarm. make sure to append the listen addr and the advertise address tags, and this time use the IP of the new node that you are adding to the swarm.
+- docker node ls --> run it on the manager node and it will show all the nodes. The manager nodes will have (leader/Reachable) on the "MANAGER STATUS" column depending on its role; for worker this column will be empty.
+- docker node promote <node_id> --> to promote a node from worker to manager.
+- docker info --> show
+- managers are also nodes (workers)
+- Only the Leader manager can execute commands. But if you execute a command from another manager, it will proxy to the leader and the leader will execute the command. If the leader goes down, another manager will be chosen as the new manager. The managers assign the tasks to the workers (the tasks are the containers.)
+
+** Docker service **
+- docker service create --name <name> -p <port:port> --replicas <count> <image_name> --> will create a service.
+- docker service ls --> will list all the services.
+- docker service ps <service name> --> will list the containers from that service. Each container will get name "servicename.<1....n>".
+- docker service inspect <servicename>
+- you can hit any nodes in the swarm (including the node where a container for that service is not running), and it will load balance across all the instances. This docker native container aware load balancer is called "routing mesh".
+
+** scaling a service **
+- docker service scale (alias for docker service update --replcas)
+- docker service scale <servicename>=<N> --> N is the new total number of replicas you need.
+- docker service update --replicas <M> <servicename> --> M is the new number of replicas.
+- docker node ps <nodename/ip> --> show the number of tasks in the node. you can run this command from any manager changing the node name to see the tasks in each nodes.
+
+** Rolling updates **
+- docker service inspect <servicename> --> look at the Placement and UpdateConfig.
+- docker service update --image <new_image_name> --update-parallelism <n> --update-delay <Ns> <servicename> --> update the service, "n" instances at a time and wait "N" seconds between each sets. The update parallelism and delay can be set even during the creation of the service.
+- UpdateConfig of the service will be updated now, and any future update command can be issued without the parallelism tags.
+
+*** Stacks and DABs(Bundles) ***
+- Bundles multiple services, packages them and deploys them as a single unit, which will include all the layers of an application, web, backend, middleware etc.
+- DAB -> distributed application Bundle.
+-docker compose : curl -L https://github.com/docker/compose/releases/download/1.8.0-rc2/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+-  chmod +x /usr/local/bin/docker-compose
+- to convert the yml file to a DAB file.
+  - docker-compose build (using a compose.yml file)
+  - push images to github
+  - edit the compose yml to update the build command with image command and refer cloudhub.
+- docker login : to login to docker github
+- docker push <imagename> --> to push an image from local to docker hub.
+- docker-compose bundle --> it will create a .dab file
+- docker stack deploy <dab file name> : stack name will be same as the dab file name. Alias is "docker deploy"
